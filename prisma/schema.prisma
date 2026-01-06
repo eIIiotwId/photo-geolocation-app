@@ -1,0 +1,60 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  
+  photos   Photo[]
+  comments Comment[]
+}
+
+model Photo {
+  id            String      @id @default(cuid())
+  ownerId       String
+  url           String
+  lat           Float
+  lng           Float
+  createdAt     DateTime    @default(now())
+  aiStatus      AiStatus    @default(PENDING)
+  aiDescription String?
+  aiError       String?
+  
+  owner    User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  comments Comment[]
+  
+  @@index([lat, lng])
+  @@map("photos")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  photoId   String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  
+  photo  Photo @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  @@index([photoId, createdAt])
+  @@map("comments")
+}
+
+enum AiStatus {
+  PENDING
+  DONE
+  ERROR
+}
+
