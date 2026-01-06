@@ -407,6 +407,103 @@ Opens at [http://localhost:5555](http://localhost:5555)
 
 ---
 
+## Architecture & Production Design
+
+This section describes how the application is designed and how it would be built and operated in a clean, scalable, and production-ready environment.
+
+### Technologies & Tools
+
+- **Frontend**: Next.js 14 (App Router), React, TypeScript, Tailwind CSS  
+- **Backend**: Next.js API Routes (Node.js runtime)  
+- **Database**: PostgreSQL with Prisma ORM  
+- **Storage**: Local filesystem for MVP (`public/uploads/`), with a planned migration to object storage (S3 / R2)  
+- **Authentication**: Auth.js (NextAuth) with Credentials provider and encrypted sessions  
+- **Maps**: MapLibre GL with OpenStreetMap tiles  
+- **AI**: Ollama (local LLaVA vision model), with a mock provider for development/testing  
+
+These choices prioritize developer productivity, clarity, and ease of review, while remaining compatible with production-grade scaling.
+
+---
+
+### System Architecture
+
+The application follows a simple, service-oriented architecture:
+
+- **Client (React / Next.js)**  
+  - Handles authentication, file upload, map rendering, and polling for AI results.
+- **API Layer (Next.js API Routes)**  
+  - Authentication enforcement
+  - Photo upload and validation
+  - AI description orchestration
+  - Comments and permissions
+- **Database (PostgreSQL)**  
+  - Users
+  - Photos (location, ownership, AI status)
+  - Comments
+- **AI Provider Layer**  
+  - Pluggable provider interface (`VisionProvider`)
+  - Mock provider for tests
+  - Ollama provider for real inference
+
+All ownership and permission rules are enforced at the API level, with UI-level safeguards for UX.
+
+---
+
+### Data Flow (Image Upload → Map Display)
+
+1. User uploads a JPEG image via the UI  
+2. Backend validates:
+   - MIME type
+   - File size
+   - EXIF GPS metadata  
+3. Image is stored in `/public/uploads/`  
+4. Photo record is created in the database with `aiStatus = PENDING`  
+5. AI description generation is triggered asynchronously (fire-and-forget)  
+6. UI polls the photo status every 2 seconds while `PENDING`  
+7. Once AI completes:
+   - `aiStatus = DONE`
+   - Description is displayed in the photo modal on the map  
+
+Failures are handled gracefully, and users can retry via a “Regenerate” action.
+
+---
+
+### Deployment Strategy
+
+**Local (current setup):**
+- Docker Compose for PostgreSQL
+- Next.js server (`npm run start`)
+
+**Production-ready setup:**
+- Next.js deployed on Vercel or containerized (Docker)
+- PostgreSQL on managed service (RDS / Supabase)
+- Object storage (S3 / R2) for images
+- Redis-backed job queue (Bull/BullMQ) for AI tasks
+- CDN for static assets
+- Monitoring (Sentry) and rate limiting
+
+---
+
+### Time Estimation (Realistic Production Planning)
+
+| Task | Estimated Time |
+|----|----|
+| Project setup & tooling | 20 min |
+| Database schema & migrations | 30 min |
+| Authentication & permissions | 40 min |
+| Photo upload & EXIF parsing | 45 min |
+| Map integration | 35 min |
+| AI integration (mock + Ollama) | 45 min |
+| Validation, error handling & UX polish | 25 min |
+| Testing, verification & documentation | 20 min |
+
+**Total estimated time**: **~4 hours**
+
+---
+
+This design prioritizes correctness, clarity, and scalability while remaining simple enough for an MVP.
+
+
 ## 📝 License
 
 This project is a technical assessment submission.
